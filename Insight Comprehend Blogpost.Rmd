@@ -1,0 +1,683 @@
+---
+title: 'Analytics for Comprehend: Seperating Good from Bad, Improving Clinical Trial
+  Site Performance'
+author: "Saran Vardhanabhuti"
+date: 'August 6, 2015 '
+output: html_document
+---
+
+```{r, echo=FALSE}
+#library(RPostgreSQL)
+#drv<-dbDriver("PostgreSQL")
+#con<-dbConnect(drv,dbname="machinelearning",host="10.130.0.108",port=5432,user="svardhanabhuti",password="OoXoongeiyewahN3aequoo9")
+#dbDisconnect(con)
+#source("functions.R")
+#Oncology
+#s3406 <- CreateData("study3406","yn_sae","pd")
+#s3544 <- CreateData("study3544","yn_sae","pd")
+#s5196 <- CreateData("study5196","yn_sae","pd")
+#s8062 <- CreateData("study8062","aeser","pd")
+#s8430 <- CreateData("study8430","aeser","pd")
+#s8792 <- CreateData("study8792","aeser","pd")
+#Cardiovascular
+#s2224 <- CreateData("study2224","aeser","pdv")
+#s8874 <- CreateData("study8874",NULL,"pd")
+#Basic stats of data
+#c1 <- c(sum(s2224$nonstudy),max(s2224$timeonstudy),dim(s2224)[1])
+#c2 <- c(sum(s8874$nonstudy),max(s8874$timeonstudy),dim(s8874)[1])
+#o1 <- c(sum(s3406$nonstudy),max(s3406$timeonstudy),dim(s3406)[1])
+#o2 <- c(sum(s3544$nonstudy),max(s3544$timeonstudy),dim(s3544)[1])
+#o3 <- c(sum(s5196$nonstudy),max(s5196$timeonstudy),dim(s5196)[1])
+#o4 <- c(sum(s8062$nonstudy),max(s8062$timeonstudy),dim(s8062)[1])
+#o5 <- c(sum(s8430$nonstudy),max(s8430$timeonstudy),dim(s8430)[1])
+#o6 <- c(sum(s8792$nonstudy),max(s8792$timeonstudy),dim(s8792)[1])
+
+#trial <- c("onco1","onco2","onco3","onco4","onco5","onco6","card1","card2")
+#enrolled <- c(o1[1],o2[1],o3[1],o4[1],o5[1],o6[1],c1[1],c2[1])
+#time_onstudy <- c(o1[2],o2[2],o3[2],o4[2],o5[2],o6[2],c1[2],c2[2])
+#num_sites <- c(o1[3],o2[3],o3[3],o4[3],o5[3],o6[3],c1[3],c2[3])
+
+#clindata <- data.frame(trial,enrolled,time_onstudy,num_sites)
+#write.table(clindata,file="clindata.txt",quote=F,sep="\t",row.names=F)
+
+#create data for oncology
+#onco <- rbind(s3406,s3544,s5196,s8062,s8430,s8792)
+#nae.a <- (onco$nae/onco$nonstudy)
+#npd.a <- (onco$npd/onco$nonstudy)
+#numquery.a <- (onco$numquery/onco$nall)
+#querytime.a <- onco$querytime
+#onco.adj <- cbind(nae.a,npd.a,numquery.a,querytime.a)
+#write.table(onco.adj,file="onco_sites.txt",quote=F,sep="\t",row.names=F)
+
+#create data for cardiovascular
+#cardio <- rbind(s2224,s8874)
+#nae.a <- (cardio$nae/cardio$nonstudy)
+#npd.a <- (cardio$npd/cardio$nonstudy)
+#numquery.a <- (cardio$numquery/cardio$nall)
+#querytime.a <- cardio$querytime
+#cardio.adj <- cbind(nae.a,npd.a,numquery.a,querytime.a)
+#write.table(cardio.adj,file="cardio_sites.txt",quote=F,sep="\t",row.names=F)
+
+#create output files for time to event analysis
+#s2224.surv.ae <- CreateSurvData("study2224","ae","aeser","aestdt")
+#s8874.surv.ae <- CreateSurvData("study8874","ae",NULL,"aestdat")
+#cardio.surv.ae <- rbind(s2224.surv.ae,s8874.surv.ae)
+#cardio <- rbind(s2224,s8874)
+#nae.a <- (cardio$nae/cardio$nonstudy)
+#cardio.site <- c(s2224.surv.ae$orgidentifier,paste(s8874.surv.ae$orgidentifier,"x",sep=""))
+#cardio.surv.ae$orgidentifier <- cardio.site
+#kfit <- kmeans(nae.a,3)
+#site.cluster <- data.frame(c(s2224$orgidentifier,paste(s8874$orgidentifier,"x",sep="")), kfit$cluster)
+#colnames(site.cluster) <- c("orgidentifier","cluster")
+#cardio.surv.ae <- merge(x=cardio.surv.ae,y=site.cluster,by="orgidentifier",all.x=T)
+#cardio.surv.ae2 <- cardio.surv.ae[,c(1,5:7)]
+#write.table(cardio.surv.ae2,file="cardio_surv_ae.txt",sep="\t",quote=F,row.names=F)
+
+##PD##
+#s2224.surv.pd <- CreateSurvData("study2224","pdv",NULL,"pdvdt")
+#s2224.surv.pd <- s2224.surv.pd[s2224.surv.pd$timediff>0,]
+#s8874.surv.pd <- CreateSurvData("study8874","pd",NULL,"dvdat")
+#s8874.surv.pd <- s8874.surv.pd[s8874.surv.pd$timediff>0,]
+#cardio.surv.pd <- rbind(s2224.surv.pd,s8874.surv.pd)
+#cardio <- rbind(s2224,s8874)
+#npd.a <- (cardio$npd/cardio$nonstudy)
+#cardio.site <- c(s2224.surv.pd$orgidentifier,paste(s8874.surv.pd$orgidentifier,"x",sep=""))
+#cardio.surv.pd$orgidentifier <- cardio.site
+#kfit <- kmeans(npd.a,3)
+#site.cluster <- data.frame(c(s2224$orgidentifier,paste(s8874$orgidentifier,"x",sep="")), kfit$cluster)
+#colnames(site.cluster) <- c("orgidentifier","cluster")
+#cardio.surv.pd <- merge(x=cardio.surv.pd,y=site.cluster,by="orgidentifier",all.x=T)
+#cardio.surv.pd2 <- cardio.surv.pd[,c(1,5:7)]
+#write.table(cardio.surv.pd2,file="cardio_surv_pd.txt",sep="\t",quote=F,row.names=F)
+```
+
+Hi, my name is Saran Vardhanabhuti, a Fellow at Insight Health Data Science. This is my Insight project in collaboration with Comprehend. Comprehend is a technology startup company that provides cloud-based solutions for insights and management of clinical trials.
+
+## Overview
+
+Clinical trials are considered the gold standard for clinical research in human. They are the principal methods for evaluating efficacy and safety of new drugs or new interventions. However, there are many issues related to management of clinical trials. First, these trials are typically very expensive since they involve recruitment and management of participants over several months to several years. Less than 10% of the trials are completed on time and more than 80% of the trials miss milestones. The root cause of the problem is that poor data quality is slowing down the results. One key factor that contributed this problem is site performance within a trial. For example, how well the sites are recruiting and managing participants over time and how well they are following the protocol and collecting the right data from patients are paramount to the success of clinical trials.
+
+The goal of this project is to utilize this data to identify sites that are underperforming based on different risk characteristics potentially to give early warning so appropriate interventions could be implemented.
+
+## Data
+
+Cinical trials data was released from Comprehend. For this project, I will look at data from 8 clinical trials: 6 are in oncology and 2 are in cardiovascular. Currently, all the trials are ongoing and accruing patients. At the time of this writing, there are 1,082 participants across 169 sites. All the data is stored in Comprehend Postgres database where each trial has its own schema and tables. For this analysis, I have to process over 100,000 rows of subject-level data that are stored in different tables and columns. 
+
+To get a snapshot of how many enrolled participants in each trial, we can see the distribution in the follow bar plot. Below 'onco' refers to oncology trial and 'card' refers to cardiology trial.
+
+```{r, echo=FALSE}
+clindata <- read.table("clindata.txt",sep="\t",header=T)
+barplot(clindata$enrolled,main="Number of enrolled participants by trials",names.arg=clindata$trial,col=c(4,4,4,4,4,4,2,2),ylab="Number of enrolled participants")
+```
+
+And how many sites are active within each trial.
+
+```{r, echo=FALSE}
+barplot(clindata$num_sites,main="Number of sites by trials",names.arg=clindata$trial,col=c(4,4,4,4,4,4,2,2),ylab="Number of sites",ylim=c(0,50))
+```
+
+And how long each trial has been accruing.
+
+```{r, echo=FALSE}
+barplot(clindata$time_onstudy,main="Accrual time",names.arg=clindata$trial,col=c(4,4,4,4,4,4,2,2),ylab="Time since study initiation (weeks)",ylim=c(0,140))
+```
+
+
+## Risk Indicators Engineering
+
+For this analysis, we do not have labelled data i.e. we do not know which sites are good or bad performers. Additionally, sites can fail in a number of different ways and there are many risk indicators that we can use to classify site performance. Outlined below are the risk indicators that I used for this analysis (risk indicators are at the site level and where appropriate they are normalized by the number of participants enrolled at each site).
+
+1. Number of protocol deviations
+
+Protocol deviation describe an event that resulted from an action that deviates from the clinical trial protocol. Number of protocol deviations at a site is the number of participants that experienced at least one 'protocol deviation' normalized by the number of enrolled subjects.
+
+2. Number of adverse events
+
+Adverse event is referred to as any untoward medical occurrences associated with the use of drug in humans, whether or not considered drug related. For this analysis where possible, I only included adverse events that are considered 'serious adverse events'. Here, the number of adverse events at a site is the number of participants that experienced at least one 'serious adverse event' normalized by the number of enrolled subjects. 
+
+3. Number of site queries
+
+Site query refers to an event where data manager has to query sites for data-related issues. Examples include missing information or incorrect values entered in the CRFs. For this analysis, where possible, site queries are 'manual queries' as opposed to 'system queries'. Typically, manual queries occur less frequently compared to system queries and may reflect the priority or seriousness of the problem. Number of site queries at a site is the number of participants that have at least one manual query by the data managers normalized by the number of enrolled subjects.
+
+4. Length of time for the sites to resolve queries
+
+Length of time to resolve the query is how long it take for a site to close the query. Since a subject could be queried many times, for each subject I take the maximum length of time to resolve the queries. At the site level, I take the average length of time to resolve queries across the enrolled participants. This number gives an estimate as to how long on average it takes to resolve the queries at this particular site.
+
+
+## Unsupervised Clustering
+
+The initial step is to cluster sites based on the risk indicators that I have outlined above. There are 4 risk indicators: number protocol deviations, number adverse events, number of site queries and length of time to resolve the site queries. Cluster analysis will be performed using data from trials in the same therapeutic areas i.e. oncology or cardiovascular.
+
+1. Six oncology trials, 86 sites. 
+
+First we can look at the correlation matrix among risk indicators. We do not see strong correlations among risk indicators, the strongest relationship is number of queries appear to have some correlation with query time.
+
+```{r,echo=FALSE}
+library(ggplot2)
+library(reshape2)
+onco.sites <- read.table("onco_sites.txt",sep="\t",header=T)
+colnames(onco.sites) <- c("numAE","numPD","numQuery","QueryTime")
+upper <- round(cor(onco.sites),2)
+upper[lower.tri(upper)]<- NA
+
+ggheatmap <- ggplot(data = na.omit(melt(upper)), aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "white", high = "red", mid = "yellow", 
+   midpoint = 0.5, limit = c(0,1), name="Pearson\nCorrelation") +
+  theme_minimal()+ 
+ theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 12, hjust = 1))+
+ coord_fixed()
+ggheatmap + 
+geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
+theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.border = element_blank(),
+  panel.background = element_blank(),
+  axis.ticks = element_blank(),
+  legend.justification = c(1, 0),
+  legend.position = c(0.6, 0.7),
+  legend.direction = "horizontal")+
+  guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                title.position = "top", title.hjust = 0.5))
+```
+
+Before, we do clustering, we can try to get a rough idea as to how many clusters we should choose. We could look at the sum of squared error (SSE) scree plots. The location of the elbow in the resulting plot suggests a suitable number of clusters for the kmeans. We might conclude that 3 clusters would be indicated by the plot below.
+
+```{r,echo=FALSE}
+mydata <- onco.sites
+wss <- (nrow(mydata)-1)*sum(apply(mydata,2,var))
+for (i in 2:10) wss[i] <- sum(kmeans(mydata,centers=i)$withinss)
+plot(1:10, wss, type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
+```
+
+Next step is to do k-means clustering, here I specified number of clusters as 3. To visualize cluster results in 2D, I plotted results using first two principal components. Grouping of risk profiles is based on cluster results e.g. low risk sites (black), moderate risk sites (green) and high risk sites (red) are shown below.
+
+```{r,echo=FALSE}
+set.seed(999)
+fit.onco <- kmeans(onco.sites,3)
+pc.onco <- princomp(onco.sites, cor=TRUE, scores=TRUE)
+plot(pc.onco$scores[,1],pc.onco$scores[,2],xlab="Principal Component 1",ylab="Principal Component 2",main="Oncology: k-means 3 clusters")
+clust1 <- which(fit.onco$cluster==1)
+clust2 <- which(fit.onco$cluster==2)
+clust3 <- which(fit.onco$cluster==3)
+points(pc.onco$scores[clust1,1],pc.onco$scores[clust1,2],col=3,pch=19)
+points(pc.onco$scores[clust2,1],pc.onco$scores[clust2,2],col=2,pch=19)
+points(pc.onco$scores[clust3,1],pc.onco$scores[clust3,2],col=1,pch=19)
+legend("topleft", c("high risk","moderate risk","low risk"), cex=0.8,bty="n",fill =c(2,3,1))
+```
+
+```{r,echo=FALSE}
+#Low risk group (black cluster): number of sites and mean of each risk indicator
+#length(clust3)
+#summary(onco.sites[clust3,],digits=2)[4,]
+c3 <- summary(onco.sites[clust3,],digits=2)[4,]
+c3 <- unique(na.omit(as.numeric(unlist(strsplit(c3, "[^0-9.]+")))))
+c3[1:3] <- c3[1:3]*100
+```
+
+```{r,echo=FALSE}
+#Moderate risk group (green cluster): number of sites and mean of each risk indicator
+#length(clust1)
+#summary(onco.sites[clust1,],digits=2)[4,] 
+c1 <- summary(onco.sites[clust1,],digits=2)[4,]
+c1 <- unique(na.omit(as.numeric(unlist(strsplit(c1, "[^0-9.]+")))))
+c1[1:3] <- c1[1:3]*100
+```
+
+```{r,echo=FALSE}
+#High risk group (red cluster): number of sites and mean of each risk indicator
+#length(clust2)
+#summary(onco.sites[clust2,],digits=2)[4,]
+c2 <- summary(onco.sites[clust2,],digits=2)[4,] 
+c2 <- unique(na.omit(as.numeric(unlist(strsplit(c2, "[^0-9.]+")))))
+c2[1:3] <- c2[1:3]*100
+```
+
+Based on cluster result, sites can be clustered by risk groups with each risk indicator shown.
+```{r,echo=FALSE}
+mat <- t(rbind(c3,c1,c2))
+colnames(mat) <- c("low risk","moderate risk","high risk")
+colours <- c("blue", "yellow", "red", "green")
+barplot(as.matrix(mat), main="Oncology Trials", ylab = "", cex.lab = 1.5, cex.main = 1.4, beside=TRUE, col=colours,ylim=c(0,100))
+legend("topleft", c("%ae","%pd","%queries","query time (weeks)"), cex=0.8, bty="n", fill=colours)
+```
+
+
+2. Two cardiovascular trials, 83 sites. 
+
+Similarly, we can look at the correlation matrix among risk indicators. Here, number of adverse events appear to be slightly correlated with time to resolve query.
+
+```{r,echo=FALSE}
+cardio.sites <- read.table("cardio_sites.txt",sep="\t",header=T)
+colnames(cardio.sites) <- c("numAE","numPD","numQuery","QueryTime")
+upper <- round(cor(cardio.sites),2)
+upper[lower.tri(upper)]<- NA
+
+ggheatmap <- ggplot(data = na.omit(melt(upper)), aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "white", high = "red", mid = "yellow", 
+   midpoint = 0.5, limit = c(0,1), name="Pearson\nCorrelation") +
+  theme_minimal()+ 
+ theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 12, hjust = 1))+
+ coord_fixed()
+ggheatmap + 
+geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
+theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.border = element_blank(),
+  panel.background = element_blank(),
+  axis.ticks = element_blank(),
+  legend.justification = c(1, 0),
+  legend.position = c(0.6, 0.7),
+  legend.direction = "horizontal")+
+  guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                title.position = "top", title.hjust = 0.5))
+```
+
+We could look at the sum of squared error (SSE) scree plots to get an idea about the number of clusters. 
+
+```{r,echo=FALSE}
+mydata <- cardio.sites
+wss <- (nrow(mydata)-1)*sum(apply(mydata,2,var))
+for (i in 2:10) wss[i] <- sum(kmeans(mydata,centers=i)$withinss)
+plot(1:10, wss, type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
+```
+
+
+Similarly, for cardiovascular trials, this is a cluster plot using k-means k=3 and visualized by the first two principal components. Grouping of risk profiles is based on cluster results e.g. low risk sites (black), moderate risk sites (green) and high risk sites (red) are shown below.
+
+```{r,echo=FALSE}
+set.seed(999)
+fit.cardio <- kmeans(cardio.sites,3)
+pc.cardio <- princomp(cardio.sites, cor=TRUE, scores=TRUE)
+plot(pc.cardio$scores[,1],pc.cardio$scores[,2],xlab="Principal Component 1",ylab="Principal Component 2",main="Cardiovascular: k-means 3 clusters")
+clust1 <- which(fit.cardio$cluster==1)
+clust2 <- which(fit.cardio$cluster==2)
+clust3 <- which(fit.cardio$cluster==3)
+points(pc.cardio$scores[clust2,1],pc.cardio$scores[clust2,2],col=1,pch=19)
+points(pc.cardio$scores[clust1,1],pc.cardio$scores[clust1,2],col=3,pch=19)
+points(pc.cardio$scores[clust3,1],pc.cardio$scores[clust3,2],col=2,pch=19)
+legend("topleft", c("high risk","moderate risk","low risk"), cex=0.8,bty="n",fill =c(2,3,1))
+```
+
+
+```{r,echo=FALSE}
+#Low risk group (black cluster): number of sites and mean of each risk indicator
+#length(clust2)
+#summary(cardio.sites[clust2,],digits=2)[4,]
+c2 <- summary(cardio.sites[clust2,],digits=2)[4,]
+c2 <- (na.omit(as.numeric(unlist(strsplit(c2, "[^0-9.]+")))))[1:4]
+c2[1:3] <- c2[1:3]*100
+```
+
+```{r,echo=FALSE}
+#Moderate risk group (green cluster): number of sites and mean of each risk indicator
+#length(clust1)
+#summary(cardio.sites[clust1,],digits=2)[4,] 
+c1 <- summary(cardio.sites[clust1,],digits=2)[4,]
+c1 <- (na.omit(as.numeric(unlist(strsplit(c1, "[^0-9.]+")))))[1:4]
+c1[1:3] <- c1[1:3]*100
+```
+
+```{r,echo=FALSE}
+#High risk group (red cluster): number of sites and mean of each risk indicator
+#length(clust3)
+#summary(cardio.sites[clust3,],digits=2)[4,] 
+c3 <- summary(cardio.sites[clust3,],digits=2)[4,]
+c3 <- (na.omit(as.numeric(unlist(strsplit(c3, "[^0-9.]+")))))[1:4]
+c3[1:3] <- c3[1:3]*100
+```
+
+Based on cluster result, sites can be clustered by risk groups with each risk indicator shown.
+
+```{r,echo=FALSE}
+mat <- t(rbind(c2,c1,c3))
+colnames(mat) <- c("low risk","moderate risk","high risk")
+colours <- c("blue", "yellow", "red", "green")
+barplot(as.matrix(mat), main="Cardiovascular Trials", ylab = "", cex.lab = 1.5, cex.main = 1.4, beside=TRUE, col=colours,ylim=c(0,100))
+legend("topleft", c("%ae","%pd","%queries","query time (weeks)"), cex=0.8, bty="n", fill=colours)
+```
+
+Based on these results, high risk oncology sites tend to have longer time to resolve queries compared to low risk oncology sites whereas high risk sites in cardiovascular trials tend to have higher number of subjects with protocol deviations and higher number of subjects with adverse events compared to low risk cardiovascular sites.
+
+## Predictive Modeling
+
+Using results from our clustering as ground-truth, we can evaluate some predictive models to predict our group clusters. Below are some preliminary results from random forests and SVM.
+
+```{r,echo=FALSE}
+set.seed(999)
+k = 10 #Folds
+onco.samp <- sample(1:k, nrow(onco.sites), replace = TRUE)
+cardio.samp <- sample(1:k, nrow(cardio.sites), replace = TRUE)
+```
+
+1. Random Forest
+
+a. Oncology trials
+
+```{r,echo=FALSE,message=FALSE}
+library(plyr)
+library(randomForest)
+
+cluster <- factor(fit.onco$cluster)
+data <- data.frame(onco.sites,cluster)
+colnames(data) <- c("nae","npd","numquery","querytime","cluster")
+
+data$id <- onco.samp 
+list <- 1:k
+
+# prediction and testset data frames that we add to with each iteration over
+# the folds
+
+prediction <- data.frame()
+testsetCopy <- data.frame()
+
+for (i in 1:k){
+  # remove rows with id i from dataframe to create training set
+  # select rows with id i to create test set
+  trainingset <- subset(data, id %in% list[-i])
+  testset <- subset(data, id %in% c(i))
+  
+  # run a random forest model
+  mymodel <- randomForest(cluster ~ ., data = trainingset, ntree = 100)
+                                                     
+  # remove response cluster column 5
+  temp <- as.data.frame(predict(mymodel, testset[,-5]))
+  # append this iteration's predictions to the end of the prediction data frame
+  prediction <- rbind(prediction, temp)
+  
+  # append this iteration's test set to the test set copy data frame
+  testsetCopy <- rbind(testsetCopy, as.data.frame(testset[,5]))
+}
+
+# add predictions and actual cluster values
+result <- cbind(prediction, testsetCopy[, 1])
+names(result) <- c("Predicted", "Actual")
+```
+
+Here, I performed 10-fold CV. I split the data into 10 roughly equal size. Each 1/10 of the data is used for prediction and other 9/10 of the data is used for training. Below is the prediction accuracy, the rows are my predicted cluster and the columns are the ground-truth based on cluster result. 
+
+```{r,echo=FALSE}
+table(result$Predicted,result$Actual)
+t <- table(result$Predicted,result$Actual)
+accuracy <- round(sum(diag(t)) / sum(t) * 100,1)
+precision1 <- round(t[1,1] / sum(t[1,]) * 100,1)
+precision2 <- round(t[2,2] / sum(t[2,]) * 100,1)
+precision3 <- round(t[3,3] / sum(t[3,]) * 100,1)
+recall1 <- round(t[1,1] / sum(t[,1]) * 100,1)
+recall2 <- round(t[2,2] / sum(t[,2]) * 100,1)
+recall3 <- round(t[3,3] / sum(t[,3]) * 100,1)
+```
+Precision for 3 classes are:
+```{r,echo=FALSE}
+c(precision1,precision2,precision3)
+```
+
+Recall for 3 classes are:
+```{r,echo=FALSE}
+c(recall1,recall2,recall3)
+```
+
+We can fit random forest for the whole dataset and look at variable importance.
+
+```{r,echo=FALSE}
+data <- data[,-6]
+rfModel <- randomForest(cluster ~ ., data=data,importance=TRUE)
+varImpPlot(rfModel,main="Variable importance")
+```
+
+b. Cardiovascular trials
+
+```{r,echo=FALSE}
+
+cluster <- factor(fit.cardio$cluster)
+data <- data.frame(cardio.sites,cluster)
+colnames(data) <- c("nae","npd","numquery","querytime","cluster")
+
+data$id <- cardio.samp 
+list <- 1:k
+
+# prediction and testset data frames that we add to with each iteration over
+# the folds
+
+prediction <- data.frame()
+testsetCopy <- data.frame()
+
+for (i in 1:k){
+  # remove rows with id i from dataframe to create training set
+  # select rows with id i to create test set
+  trainingset <- subset(data, id %in% list[-i])
+  testset <- subset(data, id %in% c(i))
+  
+  # run a random forest model
+  mymodel <- randomForest(cluster ~ ., data = trainingset, ntree = 100)
+                                                     
+  # remove response cluster column 5
+  temp <- as.data.frame(predict(mymodel, testset[,-5]))
+  # append this iteration's predictions to the end of the prediction data frame
+  prediction <- rbind(prediction, temp)
+  
+  # append this iteration's test set to the test set copy data frame
+  testsetCopy <- rbind(testsetCopy, as.data.frame(testset[,5]))
+}
+
+# add predictions and actual cluster values
+result <- cbind(prediction, testsetCopy[, 1])
+names(result) <- c("Predicted", "Actual")
+```
+
+Similarly as before, I performed 10-fold CV. Below is the prediction accuracy, the rows are my predicted cluster and the columns are the ground-truth based on cluster result.
+
+```{r,echo=FALSE}
+table(result$Predicted,result$Actual)
+t <- table(result$Predicted,result$Actual)
+accuracy <- round(sum(diag(t)) / sum(t) * 100,1)
+precision1 <- round(t[1,1] / sum(t[1,]) * 100,1)
+precision2 <- round(t[2,2] / sum(t[2,]) * 100,1)
+precision3 <- round(t[3,3] / sum(t[3,]) * 100,1)
+recall1 <- round(t[1,1] / sum(t[,1]) * 100,1)
+recall2 <- round(t[2,2] / sum(t[,2]) * 100,1)
+recall3 <- round(t[3,3] / sum(t[,3]) * 100,1)
+```
+Precision for 3 classes are:
+```{r,echo=FALSE}
+c(precision1,precision2,precision3)
+```
+
+Recall for 3 classes are:
+```{r,echo=FALSE}
+c(recall1,recall2,recall3)
+```
+
+We can fit random forest for the whole dataset and look at variable importance.
+
+```{r,echo=FALSE}
+data <- data[,-6]
+rfModel <- randomForest(cluster ~ ., data=data,importance=TRUE)
+varImpPlot(rfModel,main="Variable importance")
+```
+
+2. Support Vector Machine
+
+a. Oncology trials
+
+```{r,echo=FALSE}
+library(e1071)
+
+cluster <- factor(fit.onco$cluster)
+data <- data.frame(onco.sites,cluster)
+colnames(data) <- c("nae","npd","numquery","querytime","cluster")
+
+data$id <- onco.samp 
+list <- 1:k
+
+# prediction and testset data frames that we add to with each iteration over
+# the folds
+
+prediction <- data.frame()
+testsetCopy <- data.frame()
+
+for (i in 1:k){
+  # remove rows with id i from dataframe to create training set
+  # select rows with id i to create test set
+  trainingset <- subset(data, id %in% list[-i])
+  testset <- subset(data, id %in% c(i))
+  
+  # run a SVM model
+  mymodel <- svm(cluster ~ ., data = trainingset)
+                                                     
+  # remove response cluster column 5
+  temp <- as.data.frame(predict(mymodel, testset[,-5]))
+  # append this iteration's predictions to the end of the prediction data frame
+  prediction <- rbind(prediction, temp)
+  
+  # append this iteration's test set to the test set copy data frame
+  testsetCopy <- rbind(testsetCopy, as.data.frame(testset[,5]))
+}
+
+# add predictions and actual cluster values
+result <- cbind(prediction, testsetCopy[, 1])
+names(result) <- c("Predicted", "Actual")
+```
+
+For SVM, I also performed 10-fold CV. Below is the prediction accuracy, the rows are my predicted cluster and the columns are the ground-truth based on cluster result. 
+
+```{r,echo=FALSE}
+table(result$Predicted,result$Actual)
+t <- table(result$Predicted,result$Actual)
+accuracy <- round(sum(diag(t)) / sum(t) * 100,1)
+precision1 <- round(t[1,1] / sum(t[1,]) * 100,1)
+precision2 <- round(t[2,2] / sum(t[2,]) * 100,1)
+precision3 <- round(t[3,3] / sum(t[3,]) * 100,1)
+recall1 <- round(t[1,1] / sum(t[,1]) * 100,1)
+recall2 <- round(t[2,2] / sum(t[,2]) * 100,1)
+recall3 <- round(t[3,3] / sum(t[,3]) * 100,1)
+```
+Precision for 3 classes are:
+```{r,echo=FALSE}
+c(precision1,precision2,precision3)
+```
+
+Recall for 3 classes are:
+```{r,echo=FALSE}
+c(recall1,recall2,recall3)
+```
+
+
+b. Cardiovascular trials
+
+```{r,echo=FALSE}
+
+cluster <- factor(fit.cardio$cluster)
+data <- data.frame(cardio.sites,cluster)
+colnames(data) <- c("nae","npd","numquery","querytime","cluster")
+
+data$id <- cardio.samp
+list <- 1:k
+
+# prediction and testset data frames that we add to with each iteration over
+# the folds
+
+prediction <- data.frame()
+testsetCopy <- data.frame()
+
+for (i in 1:k){
+  # remove rows with id i from dataframe to create training set
+  # select rows with id i to create test set
+  trainingset <- subset(data, id %in% list[-i])
+  testset <- subset(data, id %in% c(i))
+  
+  # run a SVM model
+  mymodel <- svm(cluster ~ ., data = trainingset, ntree = 100)
+                                                     
+  # remove response cluster column 5
+  temp <- as.data.frame(predict(mymodel, testset[,-5]))
+  # append this iteration's predictions to the end of the prediction data frame
+  prediction <- rbind(prediction, temp)
+  
+  # append this iteration's test set to the test set copy data frame
+  testsetCopy <- rbind(testsetCopy, as.data.frame(testset[,5]))
+}
+
+# add predictions and actual cluster values
+result <- cbind(prediction, testsetCopy[, 1])
+names(result) <- c("Predicted", "Actual")
+```
+
+Below is the prediction result from SVM for cardiovascular trials.
+
+```{r,echo=FALSE}
+table(result$Predicted,result$Actual)
+t <- table(result$Predicted,result$Actual)
+accuracy <- round(sum(diag(t)) / sum(t) * 100,1)
+precision1 <- round(t[1,1] / sum(t[1,]) * 100,1)
+precision2 <- round(t[2,2] / sum(t[2,]) * 100,1)
+precision3 <- round(t[3,3] / sum(t[3,]) * 100,1)
+recall1 <- round(t[1,1] / sum(t[,1]) * 100,1)
+recall2 <- round(t[2,2] / sum(t[,2]) * 100,1)
+recall3 <- round(t[3,3] / sum(t[,3]) * 100,1)
+```
+Precision for 3 classes are:
+```{r,echo=FALSE}
+c(precision1,precision2,precision3)
+```
+
+Recall for 3 classes are:
+```{r,echo=FALSE}
+c(recall1,recall2,recall3)
+```
+
+For predictive modeling, we can see that Random Forest has better predictive accuracy when compared to SVM approach. 
+
+
+## Conclusions
+
+Key risk factors can be used to cluster sites into different risk groups. These risk indicators are well-known and are likely to be collected across trials. Looking at high risk sites, one can identify what risk indicators the sites are underperforming on. This information can be used to engage sites to identify the root cause so performance can be improved. 
+
+Our current results may be improved with:
+
+- more data by including more trials in each therapeutic area
+- additional features (though known risk factors that are easily interpretable by clinical trial sites and those that are shared/collected across sites/trials will be applicable in this type of analysis)
+- features can be weighted based on their importance i.e. some risk indicators may be important in some trials but not in others
+
+For predictive modeling, it would be good to have more data e.g. perform the analysis on completed trials so we have more data for each site and then based on cluster results we can then perform predictive modeling.
+
+## Recommendations
+
+Based on the data that we have on hands and from our clustering results, a sound strategy would be to target sites that belong to 'high risk' groups in each therapeutic area. For oncology trials, time to resolve queries tend to be longer among high risk sites compared to low/moderate risk sites, so it would be worthwhile to try to reduce time to resolve queries. For cardiovascular trials on the other hand, high risk sites tend to have higher proportion of subjects with protocol deviations and adverse events, so it would be good to understand the underlying problems or root cause that may affect these increased number of protocol deviations or adverse events.  
+
+## Additional Analysis: Time to Event Analysis
+
+If we are interested in a specific risk indicator i.e. number of adverse events or number of protocol deviation. Instead of looking at the summary statistics of these risk indicators up to the current time point normalized by the number of enrolled subjects, we could look at the trend or cumulative incidence of these risk indicator over time. This essentially translates to time to event analysis. As an example, below are some results from cardiovascular trials.
+
+1. Cardiovascular trials
+
+a. Time to adverse events
+
+We can look at cumulative incidence of time to first serious adverse events stratified by three risk groups based on clustering result of 'number of serious adverse events' by site.
+
+```{r,echo=FALSE}
+library(survival)
+cardio.surv.ae <- read.table("cardio_surv_ae.txt",sep="\t",header=T)
+cardio.out <- survfit(Surv(cardio.surv.ae$timediff,cardio.surv.ae$event) ~ strata(cardio.surv.ae$cluster), conf.type="none")
+plot(cardio.out, fun=function(x) 1-x, lty=c(3,1,2), xlab="Time in weeks",ylab="Probability of adverse events",mark.time=F)
+legend(90,0.35,c("High risk","Moderate risk","Low risk"),lty=c(3,2,1))
+```
+
+b. Time to protocol deviations
+
+This plot is a cumulative incidence of time to first protocol deviation stratified by three risk groups based on clustering result of 'number of protocol deviations' by site.
+
+
+```{r,echo=FALSE}
+cardio.surv.pd <- read.table("cardio_surv_pd.txt",sep="\t",header=T)
+cardio.out <- survfit(Surv(cardio.surv.pd$timediff,cardio.surv.pd$event) ~ strata(cardio.surv.pd$cluster), conf.type="none")
+plot(cardio.out, fun=function(x) 1-x, lty=c(2,3,1), xlab="Time in weeks",ylab="Probability of protocol deviations",mark.time=F)
+legend(90,0.35,c("High risk","Moderate risk","Low risk"),lty=c(3,2,1))
+```
